@@ -1,10 +1,19 @@
-"""用 PyInstaller 打一个单文件 exe：python tools/build_exe.py
+"""用 PyInstaller 打包 Windows 版本。
 
-产物：dist/maa-remote-control.exe（约 15-25 MB，双击即用，不需要装 Python）。
+默认打成「文件夹版」（dist/maa-remote-control/ 里有 exe 和 _internal）：
+启动快、不需要解压到临时目录，也不会被杀毒软件的临时目录拦截挡住。
+
+加 --onefile 可以打成单文件 exe，但部分机器（安全软件、受限的 TEMP）会报
+"Could not create temporary directory!"，所以单文件只作为备选。
+
+用法：
+    python tools/build_exe.py            # 文件夹版（推荐）
+    python tools/build_exe.py --onefile  # 单文件版
 """
 
 from __future__ import annotations
 
+import argparse
 import shutil
 import subprocess
 import sys
@@ -32,14 +41,7 @@ HIDDEN_IMPORTS = [
 ]
 
 
-def main() -> int:
-    try:
-        import PyInstaller  # noqa: F401
-    except ImportError:
-        print("缺少 PyInstaller。先执行：")
-        print("    python -m pip install -r requirements-build.txt")
-        return 1
-
+def build(onefile: bool) -> int:
     separator = ";" if sys.platform.startswith("win") else ":"
     add_data = [
         f"{ROOT / 'src' / 'maa_remote' / 'templates'}{separator}maa_remote/templates",
@@ -55,7 +57,7 @@ def main() -> int:
         "PyInstaller",
         "--noconfirm",
         "--clean",
-        "--onefile",
+        "--onefile" if onefile else "--onedir",
         "--name",
         NAME,
         "--paths",
@@ -79,7 +81,8 @@ def main() -> int:
         print("打包失败，请查看上面的 PyInstaller 输出。")
         return result.returncode
 
-    target = dist_dir / (NAME + (".exe" if sys.platform.startswith("win") else ""))
+    suffix = ".exe" if sys.platform.startswith("win") else ""
+    target = dist_dir / f"{NAME}{suffix}" if onefile else dist_dir / NAME / f"{NAME}{suffix}"
     if not target.exists():
         print(f"没有在 {target} 找到产物。")
         return 1
@@ -87,12 +90,31 @@ def main() -> int:
     size_mb = target.stat().st_size / 1024 / 1024
     print()
     print("打包完成：")
-    print(f"    {target}  ({size_mb:.1f} MB)")
-    print("双击运行即可，数据会放在 exe 同目录的 data 文件夹里。")
+    if onefile:
+        print(f"    {target}  ({size_mb:.1f} MB)")
+        print("双击运行即可，数据会放在 exe 同目录的 data 文件夹里。")
+    else:
+        print(f"    {target}  ({size_mb:.1f} MB，依赖在旁边的 _internal 目录里)")
+        print("整个 dist\\maa-remote-control 文件夹一起拷走，双击里面的 exe 运行。")
 
-    # 顺手清掉中间产物，只留 exe
+    # 顺手清掉中间产物
     shutil.rmtree(build_dir, ignore_errors=True)
     return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="打包 MAA 远程控制的 Windows 可执行文件")
+    parser.add_argument("--onefile", action="store_true", help="打成单文件 exe（默认是文件夹版）")
+    args = parser.parse_args()
+
+    try:
+        import PyInstaller  # noqa: F401
+    except ImportError:
+        print("缺少 PyInstaller。先执行：")
+        print("    python -m pip install -r requirements-build.txt")
+        return 1
+
+    return build(args.onefile)
 
 
 if __name__ == "__main__":

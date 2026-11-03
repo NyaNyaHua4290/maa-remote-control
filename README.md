@@ -44,19 +44,25 @@ MAA 从 v5 开始内置了「远程控制」功能：MAA 以固定间隔（默�
 
 适合「MAA 就跑在这台 Windows 电脑上」的场景：不用 Docker、不用装 Python、不用敲命令，双击就能用。
 
-### 拿到 exe
+### 拿到程序
 
 任选一种：
 
 1. **下载现成的**：打开仓库的 [Actions 页面](https://github.com/NyaNyaHua4290/maa-remote-control/actions/workflows/ci.yml)，
-   点最新一次成功的 `CI`，拉到页面底部 `Artifacts`，下载 `maa-remote-control-windows`，解压得到 `maa-remote-control.exe`。
+   点最新一次成功的 `CI`，拉到页面底部 `Artifacts`，下载 `maa-remote-control-windows` 并解压。
 2. **自己打包**：装好 Python 3.11+ 后，双击项目根目录的 `build-exe.cmd`，
-   脚本会自动装 PyInstaller 并生成 `dist\maa-remote-control.exe`（约 21 MB）。
-   也可以用命令行：`python tools\build_exe.py`。
+   脚本会自动装 PyInstaller 并生成 `dist\maa-remote-control\`。也可以用命令行：`python tools\build_exe.py`。
+
+默认打的是**文件夹版**：`dist\maa-remote-control\` 里有 `maa-remote-control.exe` 和 `_internal\` 依赖目录。
+这样不需要往系统临时目录解压，启动更快，也不会被安全软件拦「临时目录」。
+
+> 想要单文件版可以 `python tools\build_exe.py --onefile`，产物是 `dist\maa-remote-control.exe`。
+> 但单文件版每次启动都要解压到 `%TEMP%`，部分机器（安全软件、受限 TEMP、火绒/Defender 规则）
+> 会报 `[PYI-xxxx:ERROR] Could not create temporary directory!`，遇到就换回文件夹版。
 
 ### 运行
 
-双击 `maa-remote-control.exe`。它会：
+双击 `maa-remote-control.exe`（在 `dist\maa-remote-control\` 里）。它会：
 
 - 在 exe 旁边创建 `data\` 目录（数据库、截图、自动生成的 `secret.key`）；
 - 从 8000 开始找一个空闲端口，自动打开浏览器；
@@ -76,11 +82,12 @@ MAA 从 v5 开始内置了「远程控制」功能：MAA 以固定间隔（默�
 
 ### Windows 下的说明
 
-- **数据可迁移**：所有数据都在 exe 同目录的 `data\`，连同 exe 一起拷走即可换机器。
+- **整个文件夹一起拷**：`maa-remote-control.exe` 和 `_internal\` 必须放在一起，单独拷 exe 会起不来。
+- **数据可迁移**：数据在 exe 同目录的 `data\`，连同整个文件夹拷走即可换机器。
 - **关窗即停止**：关掉控制台窗口就是停止服务，没有后台常驻进程。
 - **开机自启**：给 exe 建个快捷方式，丢进 `shell:startup`（Win+R 输入即可打开该目录）。
 - **防火墙**：首次运行如果弹「Windows 防火墙已阻止」，勾选「专用网络」允许即可（仅本机用可以点取消）。
-- **SmartScreen**：exe 没有代码签名，可能提示「Windows 已保护你的电脑」→ 点「更多信息」→「仍要运行」。
+- **SmartScreen**：程序没有代码签名，可能提示「Windows 已保护你的电脑」→ 点「更多信息」→「仍要运行」。
 - **端口冲突**：8000 被占用会自动往后找（最多试 20 个），也可以设环境变量 `MAA_REMOTE_PORT=8080`。
 - **局域网访问**：默认只监听 `127.0.0.1`。要让别的设备访问，设 `MAA_REMOTE_HOST=0.0.0.0` 并在防火墙放行；
   这样就是明文 HTTP 暴露在局域网里，请自行评估。
@@ -210,9 +217,10 @@ A：检查反向代理的请求体上限，以及 `MAA_REMOTE_MAX_PAYLOAD_MB` �
 **Q：能同时接官服和 B 服吗？**
 A：可以，同一个账号下接多台 MAA 就行，它们共用一个用户标识符，靠设备标识符区分。
 
-**Q：Windows 上双击 exe 一闪而过 / 没反应？**
-A：先看控制台窗口里的报错。最常见的是端口和防火墙问题；也可以在命令行里跑
-`dist\maa-remote-control.exe` 让窗口保留下来看日志。杀毒软件误报导致的隔离见下一条。
+**Q：Windows 上双击 exe 一闪而过 / 报 `Could not create temporary directory!`？**
+A：这是单文件版（`--onefile`）在解压到 `%TEMP%` 时被系统或安全软件拦住了。
+改用默认的文件夹版（`dist\maa-remote-control\maa-remote-control.exe`）即可，它不需要临时目录。
+如果一定要单文件版，可以把 `TEMP`/`TMP` 指向一个确定可写的目录再运行。
 
 **Q：exe 被 Defender / 杀毒软件报毒？**
 A：PyInstaller 打包的未签名 exe 常被启发式误报。可以加信任，或者干脆不打包，

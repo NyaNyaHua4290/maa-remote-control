@@ -57,7 +57,8 @@ jobs:
         run: |
           $env:MAA_REMOTE_NO_BROWSER = "1"
           $env:MAA_REMOTE_PORT = "8765"
-          $p = Start-Process -FilePath "dist\maa-remote-control.exe" -PassThru
+          $exe = "dist\maa-remote-control\maa-remote-control.exe"
+          $p = Start-Process -FilePath $exe -PassThru
           Start-Sleep -Seconds 15
           try {
             $r = Invoke-WebRequest -Uri "http://127.0.0.1:8765/healthz" -UseBasicParsing
@@ -67,9 +68,9 @@ jobs:
             Get-Process | Where-Object { $_.ProcessName -like "maa-remote*" } | Stop-Process -Force
           }
 
-      - name: 上传 exe
+      - name: 上传 Windows 包
         uses: actions/upload-artifact@v4
         with:
           name: maa-remote-control-windows
-          path: dist/maa-remote-control.exe
+          path: dist/maa-remote-control/
           if-no-files-found: error

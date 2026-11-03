@@ -4,7 +4,7 @@ setlocal
 cd /d "%~dp0"
 
 echo ================================================
-echo   MAA 远程控制 - 打包 Windows 单文件 exe
+echo   MAA 远程控制 - 打包 Windows 程序
 echo ================================================
 echo.
 
@@ -32,6 +32,6 @@ if errorlevel 1 (
 )
 
 echo.
-echo 完成！双击 dist\maa-remote-control.exe 即可运行。
+echo 完成！双击 dist\maa-remote-control\maa-remote-control.exe 即可运行。
 pause
 exit /b 0
