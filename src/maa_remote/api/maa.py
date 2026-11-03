@@ -59,10 +59,13 @@ def get_task(
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="用户标识符无效")
 
-    if not body.device.strip():
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="缺少 device")
+    device_uid = (body.device or "").strip()
+    if not device_uid:
+        # MAA 设置页的「测试连接」只带 user、不带 device，
+        # 这里直接返回空任务让它测通，不要报 400（否则 MAA 会显示 BadRequest）
+        return {"tasks": []}
 
-    device = upsert_device(db, user, body.device, _client_ip(request))
+    device = upsert_device(db, user, device_uid, _client_ip(request))
     tasks = task_service.claim_pending_tasks(db, device)
     if tasks:
         logger.info("向 %s 下发 %d 个任务", device.display_name, len(tasks))

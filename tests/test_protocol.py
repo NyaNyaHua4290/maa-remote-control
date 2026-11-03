@@ -136,3 +136,13 @@ def test_report_for_unknown_task_is_404(client):
         json={"user": key, "device": "dev-1", "task": "missing", "status": "SUCCESS", "payload": ""},
     )
     assert response.status_code == 404
+
+
+def test_poll_without_device_is_treated_as_connection_test(client):
+    """MAA 设置页的「测试连接」只带 user，不带 device，必须返回 200 而不是 400。"""
+
+    user_id = create_user()
+    response = client.post("/maa/getTask", json={"user": user_key_of(user_id)})
+
+    assert response.status_code == 200
+    assert response.json() == {"tasks": []}
