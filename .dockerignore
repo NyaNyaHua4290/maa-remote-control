@@ -7,9 +7,9 @@ __pycache__
 .pytest_cache
 .mypy_cache
 .ruff_cache
+.pytest-tmp
 data
 *.db
 .env
 tests
 docs
-README.md
