@@ -38,9 +38,54 @@ MAA 从 v5 开始内置了「远程控制」功能：MAA 以固定间隔（默�
 - **任务下发**：一键长草、单独跑某个子功能、抽卡、生息演算、截图、停止当前任务、修改连接地址/关卡。
 - **截图查看**：截图任务的结果自动落盘，页面上点开即看。
 - **任务历史**：每条任务的类型、参数、状态、完成时间、错误信息都留在库里。
-- **开箱即用**：一条 `docker compose up -d` 就能跑，数据落到宿主机目录。
+- **开箱即用**：服务器上一句 `docker compose up -d`；Windows 上双击一个 exe。
 
-## 快速开始（Docker，推荐）
+## 方式一：Windows 直接运行（一个 exe，最简单）
+
+适合「MAA 就跑在这台 Windows 电脑上」的场景：不用 Docker、不用装 Python、不用敲命令，双击就能用。
+
+### 拿到 exe
+
+任选一种：
+
+1. **下载现成的**：打开仓库的 [Actions 页面](https://github.com/NyaNyaHua4290/maa-remote-control/actions/workflows/ci.yml)，
+   点最新一次成功的 `CI`，拉到页面底部 `Artifacts`，下载 `maa-remote-control-windows`，解压得到 `maa-remote-control.exe`。
+2. **自己打包**：装好 Python 3.11+ 后，双击项目根目录的 `build-exe.cmd`，
+   脚本会自动装 PyInstaller 并生成 `dist\maa-remote-control.exe`（约 21 MB）。
+   也可以用命令行：`python tools\build_exe.py`。
+
+### 运行
+
+双击 `maa-remote-control.exe`。它会：
+
+- 在 exe 旁边创建 `data\` 目录（数据库、截图、自动生成的 `secret.key`）；
+- 从 8000 开始找一个空闲端口，自动打开浏览器；
+- 在控制台打印要填进 MAA 的两个端点。
+
+然后在 MAA 的 **设置 → 远程控制** 里填：
+
+| MAA 设置项 | 填什么 |
+| --- | --- |
+| 用户标识符 | 网页「配置指引」页里复制的那串密钥 |
+| 获取任务端点 | `http://127.0.0.1:8000/maa/getTask` |
+| 汇报任务端点 | `http://127.0.0.1:8000/maa/reportStatus` |
+| 轮询间隔 | `1000`（毫秒，默认值即可） |
+
+> 端口如果不是 8000，以控制台打印的为准。MAA 面对 http 端点会提示「不安全」，
+> 本机回环地址（127.0.0.1）属于正常情况，数据不会离开本机。
+
+### Windows 下的说明
+
+- **数据可迁移**：所有数据都在 exe 同目录的 `data\`，连同 exe 一起拷走即可换机器。
+- **关窗即停止**：关掉控制台窗口就是停止服务，没有后台常驻进程。
+- **开机自启**：给 exe 建个快捷方式，丢进 `shell:startup`（Win+R 输入即可打开该目录）。
+- **防火墙**：首次运行如果弹「Windows 防火墙已阻止」，勾选「专用网络」允许即可（仅本机用可以点取消）。
+- **SmartScreen**：exe 没有代码签名，可能提示「Windows 已保护你的电脑」→ 点「更多信息」→「仍要运行」。
+- **端口冲突**：8000 被占用会自动往后找（最多试 20 个），也可以设环境变量 `MAA_REMOTE_PORT=8080`。
+- **局域网访问**：默认只监听 `127.0.0.1`。要让别的设备访问，设 `MAA_REMOTE_HOST=0.0.0.0` 并在防火墙放行；
+  这样就是明文 HTTP 暴露在局域网里，请自行评估。
+
+## 方式二：Docker 部署（服务器推荐）
 
 ```bash
 git clone https://github.com/NyaNyaHua4290/maa-remote-control.git
@@ -92,24 +137,37 @@ pytest
 
 | 变量 | 默认值 | 说明 |
 | --- | --- | --- |
-| `MAA_REMOTE_SECRET_KEY` | `dev-only-insecure-secret-change-me` | 会话签名密钥，**生产环境必改**，不然后台告警且任何人可伪造登录态 |
+| `MAA_REMOTE_SECRET_KEY` | 自动生成并存到 `data/secret.key` | 会话签名密钥；不设置时会随机生成一个并持久化，Docker 下等同使用数据卷里的文件 |
 | `MAA_REMOTE_DATABASE_URL` | `sqlite:///data/maa-remote.db` | 数据库连接串，也支持 PostgreSQL |
-| `MAA_REMOTE_DATA_DIR` | `./data` | 数据目录（数据库 + 截图） |
-| `MAA_REMOTE_PUBLIC_BASE_URL` | `http://127.0.0.1:8000` | 对外访问地址，用于在页面上生成端点 |
+| `MAA_REMOTE_DATA_DIR` | exe 同目录 / 项目根目录下的 `data` | 数据目录（数据库 + 截图 + 密钥） |
+| `MAA_REMOTE_PUBLIC_BASE_URL` | `http://127.0.0.1:8000` | 对外访问地址，用于在页面上生成端点；exe 模式下自动填成实际地址 |
 | `MAA_REMOTE_ALLOW_REGISTRATION` | `true` | 是否开放注册；设为 `false` 后只能由管理员建号 |
 | `MAA_REMOTE_SESSION_MAX_AGE` | `1209600`（14 天） | 登录态有效期（秒） |
 | `MAA_REMOTE_MAX_PAYLOAD_MB` | `64` | 单次回报的体积上限，截图任务需要足够大 |
 | `MAA_REMOTE_LOG_LEVEL` | `INFO` | 日志级别 |
+
+只在 exe / `tools/launcher.py` 启动时生效的两个变量：
+
+| 变量 | 默认值 | 说明 |
+| --- | --- | --- |
+| `MAA_REMOTE_HOST` | `127.0.0.1` | 监听地址，改成 `0.0.0.0` 可让局域网访问 |
+| `MAA_REMOTE_PORT` | `8000` | 起始端口，被占用会自动往后找 |
+| `MAA_REMOTE_NO_BROWSER` | 未设置 | 设为 `1` 则启动时不自动打开浏览器 |
 
 ## 项目结构
 
 ```
 maa-remote-control/
 ├── Dockerfile                  # 多阶段构建，非 root 运行
-├── docker-compose.yml          # 一键部署
+├── docker-compose.yml          # 服务器一键部署
+├── build-exe.cmd               # Windows 打包：双击生成 dist\maa-remote-control.exe
 ├── pyproject.toml              # 包元数据与 pytest 配置
 ├── requirements.txt            # 运行依赖
 ├── requirements-dev.txt        # 测试依赖
+├── requirements-build.txt      # PyInstaller 依赖
+├── tools/
+│   ├── launcher.py             # exe / 源码运行入口（选端口、开浏览器）
+│   └── build_exe.py            # PyInstaller 打包脚本
 ├── docs/
 │   ├── deployment.md           # 反向代理、HTTPS、备份、升级
 │   └── protocol.md             # 协议细节与 curl 示例
@@ -151,6 +209,18 @@ A：检查反向代理的请求体上限，以及 `MAA_REMOTE_MAX_PAYLOAD_MB` �
 
 **Q：能同时接官服和 B 服吗？**
 A：可以，同一个账号下接多台 MAA 就行，它们共用一个用户标识符，靠设备标识符区分。
+
+**Q：Windows 上双击 exe 一闪而过 / 没反应？**
+A：先看控制台窗口里的报错。最常见的是端口和防火墙问题；也可以在命令行里跑
+`dist\maa-remote-control.exe` 让窗口保留下来看日志。杀毒软件误报导致的隔离见下一条。
+
+**Q：exe 被 Defender / 杀毒软件报毒？**
+A：PyInstaller 打包的未签名 exe 常被启发式误报。可以加信任，或者干脆不打包，
+直接用 `python tools\launcher.py` 运行，效果完全一样。
+
+**Q：Windows 上必须用 HTTPS 吗？**
+A：本机使用（MAA 和网页在同一台电脑）时 `http://127.0.0.1` 是可以的，MAA 会提示一次「不安全」但数据不出本机。
+一旦要让别的设备访问，请放到反向代理后面走 HTTPS。
 
 ## 致谢
 

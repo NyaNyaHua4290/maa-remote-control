@@ -1,17 +1,47 @@
-"""运行时配置：全部通过环境变量注入，方便 Docker 部署。"""
+"""运行时配置：既支持 Docker 用环境变量注入，也支持 Windows 直接双击 exe 运行。"""
 
 from __future__ import annotations
 
 import os
 import secrets
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
 # 项目根目录（src/maa_remote/config.py -> 上三级）
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
-# 没有配置密钥时使用的开发默认值，生产环境会给出告警
+# 没有配置密钥、且数据目录不可写时使用的兜底值，生产环境会给出告警
 DEV_SECRET = "dev-only-insecure-secret-change-me"
+
+
+def app_root() -> Path:
+    """应用根目录：打包成 exe 后是 exe 所在目录，否则是项目根目录。"""
+
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent
+    return PROJECT_ROOT
+
+
+def _resolve_secret(data_dir: Path) -> str:
+    """优先读环境变量；没有就在数据目录里生成并持久化一个随机密钥。"""
+
+    env_secret = os.getenv("MAA_REMOTE_SECRET_KEY")
+    if env_secret:
+        return env_secret
+
+    secret_file = data_dir / "secret.key"
+    try:
+        if secret_file.exists():
+            existing = secret_file.read_text(encoding="utf-8").strip()
+            if existing:
+                return existing
+        generated = secrets.token_urlsafe(48)
+        secret_file.write_text(generated, encoding="utf-8")
+        return generated
+    except OSError:
+        # 目录只读（比如装进了 Program Files）时退回开发密钥，由启动日志告警
+        return DEV_SECRET
 
 # MAA 默认 1 秒轮询一次，留出余量后 30 秒没请求就视为离线
 ONLINE_THRESHOLD_SECONDS = 30
@@ -83,7 +113,7 @@ class Settings:
 
 def load_settings() -> Settings:
     data_dir = Path(
-        os.getenv("MAA_REMOTE_DATA_DIR") or (PROJECT_ROOT / "data")
+        os.getenv("MAA_REMOTE_DATA_DIR") or (app_root() / "data")
     ).expanduser()
     data_dir = data_dir.resolve()
     data_dir.mkdir(parents=True, exist_ok=True)
@@ -93,7 +123,7 @@ def load_settings() -> Settings:
     public_base_url = (os.getenv("MAA_REMOTE_PUBLIC_BASE_URL") or "http://127.0.0.1:8000").rstrip("/")
 
     settings = Settings(
-        secret_key=os.getenv("MAA_REMOTE_SECRET_KEY") or DEV_SECRET,
+        secret_key=_resolve_secret(data_dir),
         database_url=database_url,
         data_dir=data_dir,
         public_base_url=public_base_url,

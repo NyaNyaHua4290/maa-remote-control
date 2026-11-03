@@ -25,6 +25,9 @@ MAA_REMOTE_PUBLIC_BASE_URL=https://maa.example.com
 python3 -c "import secrets; print(secrets.token_urlsafe(48))"
 ```
 
+> `MAA_REMOTE_SECRET_KEY` 不填也能跑：程序会在数据目录里自动生成 `secret.key` 并复用。
+> 但显式指定更稳妥，也方便换卷、重建容器时不丢登录态。
+
 然后：
 
 ```bash

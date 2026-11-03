@@ -33,3 +33,43 @@ jobs:
       - uses: actions/checkout@v4
       - name: 构建镜像
         run: docker build -t maa-remote-control:ci .
+
+  windows-exe:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-build.txt
+
+      - name: 打包 exe
+        run: python tools/build_exe.py
+
+      - name: 冒烟测试（启动 exe 并请求 /healthz）
+        shell: pwsh
+        run: |
+          $env:MAA_REMOTE_NO_BROWSER = "1"
+          $env:MAA_REMOTE_PORT = "8765"
+          $p = Start-Process -FilePath "dist\maa-remote-control.exe" -PassThru
+          Start-Sleep -Seconds 15
+          try {
+            $r = Invoke-WebRequest -Uri "http://127.0.0.1:8765/healthz" -UseBasicParsing
+            if ($r.StatusCode -ne 200) { throw "healthz 返回 $($r.StatusCode)" }
+            Write-Host "healthz OK"
+          } finally {
+            Get-Process | Where-Object { $_.ProcessName -like "maa-remote*" } | Stop-Process -Force
+          }
+
+      - name: 上传 exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: maa-remote-control-windows
+          path: dist/maa-remote-control.exe
+          if-no-files-found: error
