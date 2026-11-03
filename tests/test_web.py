@@ -143,3 +143,68 @@ def test_healthz(client):
     response = client.get("/healthz")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+
+
+def test_delete_device_removes_tasks(client):
+    _register(client, username="frank")
+
+    db = SessionLocal()
+    key = db.scalar(select(User).where(User.username == "frank")).user_key
+    db.close()
+
+    client.post("/maa/getTask", json={"user": key, "device": "dev-del"})
+    db = SessionLocal()
+    device_id = db.scalar(select(Device).where(Device.device_uid == "dev-del")).id
+    db.close()
+
+    token = _csrf(client, f"/devices/{device_id}")
+    client.post(
+        f"/devices/{device_id}/tasks",
+        data={"type": "LinkStart", "params": "", "csrf_token": token},
+        follow_redirects=False,
+    )
+
+    response = client.post(
+        f"/devices/{device_id}/delete",
+        data={"csrf_token": token},
+        follow_redirects=False,
+    )
+    assert response.status_code == 303
+    assert response.headers["location"].startswith("/?msg=")
+
+    db = SessionLocal()
+    try:
+        assert db.get(Device, device_id) is None
+        assert db.scalar(select(Task).where(Task.device_id == device_id)) is None
+    finally:
+        db.close()
+
+    assert client.get(f"/devices/{device_id}").status_code == 404
+
+
+def test_cannot_delete_others_device(client):
+    _register(client, username="grace")
+    db = SessionLocal()
+    key = db.scalar(select(User).where(User.username == "grace")).user_key
+    db.close()
+    client.post("/maa/getTask", json={"user": key, "device": "dev-grace"})
+    db = SessionLocal()
+    other_id = db.scalar(select(Device).where(Device.device_uid == "dev-grace")).id
+    db.close()
+
+    client.post("/logout", data={"csrf_token": _csrf(client, "/")}, follow_redirects=False)
+    _register(client, username="heidi")
+
+    token = _csrf(client, "/")
+    response = client.post(
+        f"/devices/{other_id}/delete",
+        data={"csrf_token": token},
+        follow_redirects=False,
+    )
+    assert response.status_code == 404
+
+    db = SessionLocal()
+    try:
+        assert db.get(Device, other_id) is not None
+    finally:
+        db.close()

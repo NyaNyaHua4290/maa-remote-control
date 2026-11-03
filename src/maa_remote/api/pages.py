@@ -27,7 +27,7 @@ from ..security import (
 )
 from ..services import tasks as task_service
 from ..services.devices import get_device, list_devices
-from ..services.screenshots import ScreenshotError, screenshot_path
+from ..services.screenshots import ScreenshotError, delete_screenshot, screenshot_path
 from ..web import templates
 
 router = APIRouter(tags=["页面"])
@@ -267,6 +267,39 @@ def rename_device(
     device.name = name.strip()[:32]
     db.commit()
     return _redirect(f"/devices/{device_id}", msg="已重命名")
+
+
+@router.post("/devices/{device_id}/delete")
+def delete_device(
+    request: Request,
+    device_id: int,
+    user: Annotated[User | None, Depends(current_user_optional)],
+    db: Annotated[Session, Depends(get_db)],
+    csrf_token: Annotated[str, Form()] = "",
+):
+    """删除实例：连同它的任务记录、截图一起清掉。
+
+    注意：如果 MAA 那边还开着远程控制，它下一次轮询（约 1 秒后）会把设备重新登记回来。
+    想彻底不再出现，需要在那台 MAA 上关掉远程控制，或者换一个用户标识符。
+    """
+
+    if user is None:
+        raise LoginRequired("/")
+    verify_csrf(request, csrf_token)
+
+    device = get_device(db, user, device_id)
+    if device is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="设备不存在")
+
+    name = device.display_name
+    for task in list(device.tasks):
+        if task.screenshot_name:
+            delete_screenshot(task.screenshot_name)
+    db.delete(device)
+    db.commit()
+
+    logger.info("用户 %s 删除了实例 %s", user.username, name)
+    return _redirect("/", msg=f"已删除实例「{name}」")
 
 
 @router.post("/devices/{device_id}/tasks")

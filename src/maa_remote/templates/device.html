@@ -113,6 +113,19 @@
     </table>
   </div>
 </section>
+
+<section class="card">
+  <h2>删除实例</h2>
+  <p class="muted small">
+    删除后，这台实例的历史任务、截图都会一起清掉，无法恢复。
+    如果那个 MAA 还开着「远程控制」，它大约 1 秒后就会重新登记出现；要彻底告别它，请先在 MAA 里关掉远程控制。
+  </p>
+  <form method="post" action="/devices/{{ device.id }}/delete"
+        data-confirm="确定删除实例「{{ device.display_name }}」吗？历史任务和截图会一起删除。">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button class="btn btn-danger" type="submit">删除这个实例</button>
+  </form>
+</section>
 {% endblock %}
 
 {% block scripts %}
