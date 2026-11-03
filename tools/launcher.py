@@ -23,11 +23,15 @@ PORT_SCAN_RANGE = 20
 
 
 def _configure_console() -> None:
-    """避免中文在部分 Windows 控制台里报编码错误。"""
+    """避免中文在部分 Windows 控制台里报编码错误。
+
+    不强制改成 UTF-8：中文 Windows 的控制台是 cp936，强行输出 UTF-8 字节会变成乱码。
+    只把无法编码的字符替换掉，保证不会因为编码异常直接崩掉。
+    """
 
     for stream in (sys.stdout, sys.stderr):
         try:
-            stream.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
+            stream.reconfigure(errors="replace")  # type: ignore[union-attr]
         except (AttributeError, ValueError):
             pass
 

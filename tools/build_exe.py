@@ -102,7 +102,22 @@ def build(onefile: bool) -> int:
     return 0
 
 
+def _configure_console() -> None:
+    """Windows CI 的默认代码页可能是 cp1252，直接打印中文会抛 UnicodeEncodeError。
+
+    不强制改成 UTF-8（中文 Windows 控制台是 cp936，会乱码），只把编码不了的字符替换掉。
+    """
+
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(errors="replace")  # type: ignore[union-attr]
+        except (AttributeError, ValueError):
+            pass
+
+
 def main() -> int:
+    _configure_console()
+
     parser = argparse.ArgumentParser(description="打包 MAA 远程控制的 Windows 可执行文件")
     parser.add_argument("--onefile", action="store_true", help="打成单文件 exe（默认是文件夹版）")
     args = parser.parse_args()

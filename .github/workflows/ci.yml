@@ -36,6 +36,9 @@ jobs:
 
   windows-exe:
     runs-on: windows-latest
+    env:
+      # 让日志按 UTF-8 输出，否则 runner 的 cp1252 会把中文打成 ?
+      PYTHONUTF8: "1"
     steps:
       - uses: actions/checkout@v4
 
