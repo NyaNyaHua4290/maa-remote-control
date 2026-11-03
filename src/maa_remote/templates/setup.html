@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}配置指引 · {{ app_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>把你的 MAA 接进来</h1>
+    <p class="muted">按下面的步骤填一次，之后所有操作都在网页上完成</p>
+  </div>
+</div>
+
+<section class="card">
+  <h2>1. 复制你的用户标识符</h2>
+  <p class="muted">这是 MAA 用来证明「它属于你」的密钥，请像密码一样保管，不要发到公开场合。</p>
+  <div class="copy-row">
+    <input class="mono" type="text" readonly value="{{ user.user_key }}" id="user-key">
+    <button class="btn" type="button" data-copy="user-key">复制</button>
+  </div>
+</section>
+
+<section class="card">
+  <h2>2. 在 MAA 里填写远程控制</h2>
+  <p class="muted">MAA → 设置 → 远程控制，勾选启用后按下表填写：</p>
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr><th>MAA 设置项</th><th>要填的内容</th><th></th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>用户标识符</td>
+          <td class="mono">{{ user.user_key }}</td>
+          <td><button class="btn btn-sm" type="button" data-copy-text="{{ user.user_key }}">复制</button></td>
+        </tr>
+        <tr>
+          <td>获取任务端点</td>
+          <td class="mono">{{ public_base_url }}/maa/getTask</td>
+          <td><button class="btn btn-sm" type="button" data-copy-text="{{ public_base_url }}/maa/getTask">复制</button></td>
+        </tr>
+        <tr>
+          <td>汇报任务端点</td>
+          <td class="mono">{{ public_base_url }}/maa/reportStatus</td>
+          <td><button class="btn btn-sm" type="button" data-copy-text="{{ public_base_url }}/maa/reportStatus">复制</button></td>
+        </tr>
+        <tr>
+          <td>轮询间隔</td>
+          <td class="mono">1000 ms（默认值即可）</td>
+          <td></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="card">
+  <h2>3. 回到这里刷新</h2>
+  <p class="muted">
+    MAA 配置好之后会立刻开始轮询，几秒内这台实例就会自动出现在首页。
+    你可以在实例详情页给它改名，然后把常用的「一键长草」「截图」「停止」挂上来。
+  </p>
+  <a class="btn btn-primary" href="/">返回首页</a>
+</section>
+
+<section class="card">
+  <h2>注意事项</h2>
+  <ul class="list">
+    <li><b>必须用 HTTPS。</b>MAA 检测到端点使用 http 时每次连接都会弹不安全警告，明文传输还会泄露你的用户标识符。</li>
+    <li><b>反向代理要放开请求体积。</b>截图任务会把整张图以 Base64 回传（几十 MB），Nginx 需要 <code>client_max_body_size 64m;</code>。</li>
+    <li><b>同一个账号可以接多台 MAA。</b>它们共用同一个用户标识符，靠 MAA 自己生成的设备标识符区分。</li>
+    <li><b>MAA 重启不会丢任务。</b>任务下发后若 15 分钟内没有回报会被标记为超时，重新点一次即可。</li>
+  </ul>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/app.js" defer></script>
+{% endblock %}

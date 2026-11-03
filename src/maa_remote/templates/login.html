@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}登录 · {{ app_name }}{% endblock %}
+{% block content %}
+<div class="auth-card">
+  <h1>登录</h1>
+  <p class="muted">用账号管理你所有的 MAA 实例</p>
+
+  {% if error %}<div class="flash flash-err">{{ error }}</div>{% endif %}
+
+  <form method="post" action="/login" class="form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="next" value="{{ next_url }}">
+
+    <label for="username">用户名</label>
+    <input id="username" name="username" type="text" autocomplete="username" required autofocus>
+
+    <label for="password">密码</label>
+    <input id="password" name="password" type="password" autocomplete="current-password" required>
+
+    <button type="submit" class="btn btn-primary btn-block">登录</button>
+  </form>
+
+  {% if allow_registration %}
+  <p class="muted center">还没有账号？<a href="/register">立即注册</a></p>
+  {% endif %}
+</div>
+{% endblock %}

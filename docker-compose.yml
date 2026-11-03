@@ -1,0 +1,21 @@
+services:
+  maa-remote:
+    build: .
+    image: maa-remote-control:latest
+    container_name: maa-remote
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      MAA_REMOTE_DATA_DIR: /app/data
+      MAA_REMOTE_DATABASE_URL: sqlite:////app/data/maa-remote.db
+    ports:
+      # 只监听本机，公网访问请交给反向代理（Nginx / Caddy / Traefik）并启用 HTTPS
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - ./data:/app/data
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

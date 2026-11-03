@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}我的实例 · {{ app_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>我的 MAA 实例</h1>
+    <p class="muted">
+      共 {{ stats.total }} 台，在线 <span data-online-count>{{ stats.online }}</span> 台
+    </p>
+  </div>
+  <a class="btn btn-primary" href="/setup">+ 接入新实例</a>
+</div>
+
+{% if devices %}
+<div class="grid" data-device-grid>
+  {% for device in devices %}
+  <a class="card device-card" href="/devices/{{ device.id }}" data-device-id="{{ device.id }}">
+    <div class="device-card-head">
+      <span class="dot {{ 'dot-online' if device.is_online else 'dot-offline' }}" data-online-dot></span>
+      <strong>{{ device.display_name }}</strong>
+    </div>
+    <div class="muted small" data-online-text>
+      {{ "在线" if device.is_online else "离线" }} · 最后活动 {{ device.last_seen_at | time_ago }}
+    </div>
+    <div class="mono small muted">{{ device.device_uid[:18] }}{% if device.device_uid | length > 18 %}…{% endif %}</div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card empty">
+  <h2>还没有接入任何 MAA</h2>
+  <p class="muted">
+    在 MAA 的「设置 → 远程控制」里填入下面的地址和你的用户标识符，
+    MAA 就会每隔一秒来轮询一次，之后它会自动出现在这里。
+  </p>
+  <ol class="steps">
+    <li>打开 MAA，进入 <b>设置 → 远程控制</b>，勾选启用。</li>
+    <li><b>用户标识符</b> 填你自己的密钥（在配置指引页可以复制）。</li>
+    <li><b>获取任务端点</b> 填 <code>{{ public_base_url }}/maa/getTask</code></li>
+    <li><b>汇报任务端点</b> 填 <code>{{ public_base_url }}/maa/reportStatus</code></li>
+  </ol>
+  <a class="btn btn-primary" href="/setup">查看完整配置指引</a>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if devices %}<script src="/static/app.js" defer></script>{% endif %}
+{% endblock %}
