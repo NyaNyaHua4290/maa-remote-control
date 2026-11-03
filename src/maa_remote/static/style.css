@@ -167,3 +167,9 @@ input:focus, select:focus { outline: 2px solid rgba(37, 99, 235, .25); border-co
 
 code { background: #f1f5f9; padding: 1px 5px; border-radius: 4px; font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
 .empty { text-align: left; }
+
+.op-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.op-actions form { margin: 0; display: flex; gap: 6px; align-items: center; }
+.op-actions input[type="password"] { width: 130px; padding: 5px 8px; font-size: 13px; }
+.checkbox { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--muted); white-space: nowrap; }
+.checkbox input { width: auto; }

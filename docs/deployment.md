@@ -131,7 +131,9 @@ MAA_REMOTE_DATABASE_URL=postgresql+psycopg://maa:maa@db:5432/maa
 MAA_REMOTE_ALLOW_REGISTRATION=false
 ```
 
-之后新账号只能这样建（在容器里直接写库）：
+之后新账号由**管理员在网页上创建**：登录管理员账号 → 导航栏「用户管理」→ 新建用户。
+
+如果连管理员都还没创建（`ALLOW_REGISTRATION=false` 时首次部署），也可以在容器里直接写库：
 
 ```bash
 docker compose exec maa-remote python - <<'PY'
@@ -141,11 +143,18 @@ from maa_remote.security import hash_password
 from maa_remote.config import generate_user_key
 
 db = SessionLocal()
-db.add(User(username="admin", password_hash=hash_password("换成强密码"), user_key=generate_user_key()))
+db.add(User(
+    username="admin",
+    password_hash=hash_password("换成强密码"),
+    user_key=generate_user_key(),
+    is_admin=True,
+))
 db.commit()
 print("done")
 PY
 ```
+
+> 注：只要库里一个管理员都没有，服务启动时会自动把最早注册的账号提升为管理员。
 
 ## 8. 故障排查
 

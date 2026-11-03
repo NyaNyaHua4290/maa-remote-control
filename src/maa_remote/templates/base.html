@@ -13,6 +13,7 @@
     <nav class="nav">
       <a href="/">我的实例</a>
       <a href="/setup">配置指引</a>
+      {% if user.is_admin %}<a href="/admin/users">用户管理</a>{% endif %}
       <form method="post" action="/logout" class="inline-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <button type="submit" class="link-button">退出（{{ user.username }}）</button>

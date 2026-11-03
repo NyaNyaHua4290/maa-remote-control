@@ -8,7 +8,7 @@ from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..config import generate_user_key, settings
@@ -174,13 +174,21 @@ def register_submit(
     if db.scalar(select(User).where(User.username == username)) is not None:
         return fail("该用户名已被注册")
 
-    user = User(username=username, password_hash=hash_password(password), user_key=generate_user_key())
+    # 第一个注册的账号自动成为管理员
+    is_first_user = (db.scalar(select(func.count()).select_from(User)) or 0) == 0
+
+    user = User(
+        username=username,
+        password_hash=hash_password(password),
+        user_key=generate_user_key(),
+        is_admin=is_first_user,
+    )
     db.add(user)
     db.commit()
     db.refresh(user)
 
     login_user(request, user)
-    logger.info("新用户注册：%s", user.username)
+    logger.info("新用户注册：%s（管理员：%s）", user.username, is_first_user)
     return RedirectResponse("/setup", status_code=status.HTTP_303_SEE_OTHER)
 
 

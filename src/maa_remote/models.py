@@ -38,6 +38,8 @@ class User(Base):
     user_key: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    # 首个注册的账号自动成为管理员
+    is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
 
     devices: Mapped[list["Device"]] = relationship(
         back_populates="user",

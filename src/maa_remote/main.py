@@ -14,10 +14,10 @@ from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import Response
 
 from . import __version__
-from .api import app_api, maa, pages
+from .api import admin, app_api, maa, pages
 from .config import settings
 from .db import init_db
-from .web import STATIC_DIR
+from .web import STATIC_DIR, templates
 
 logger = logging.getLogger("maa_remote")
 
@@ -75,11 +75,21 @@ def create_app() -> FastAPI:
 
     app.include_router(maa.router)
     app.include_router(pages.router)
+    app.include_router(admin.router)
     app.include_router(app_api.router)
 
     @app.exception_handler(pages.LoginRequired)
     async def _handle_login_required(_request: Request, exc: pages.LoginRequired) -> RedirectResponse:
         return RedirectResponse(f"/login?next={quote(exc.next_url)}", status_code=status.HTTP_303_SEE_OTHER)
+
+    @app.exception_handler(admin.AdminRequired)
+    async def _handle_admin_required(request: Request, _exc: admin.AdminRequired) -> Response:
+        return templates.TemplateResponse(
+            request,
+            "error.html",
+            {"request": request, "user": None, "csrf_token": "", "message": "这个页面只有管理员能访问"},
+            status_code=status.HTTP_403_FORBIDDEN,
+        )
 
     @app.get("/favicon.ico", include_in_schema=False)
     async def favicon() -> Response:
